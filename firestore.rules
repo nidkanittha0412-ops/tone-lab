@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function isTeacher() { return request.auth != null && request.auth.uid == 'o0u942U8fROkxaLFfkef4RlHI9D3'; }
+  function validStudentAttempt() {
+   return request.auth != null
+    && request.auth.token.firebase.sign_in_provider == 'anonymous'
+    && request.resource.data.keys().hasAll(['pin','studentCode','nickname','kind','score','details','uid','createdAt'])
+    && request.resource.data.keys().hasOnly(['pin','studentCode','nickname','kind','score','details','uid','createdAt'])
+    && request.resource.data.uid == request.auth.uid
+    && request.resource.data.pin is string
+    && request.resource.data.pin.matches('^[0-9]{6}$')
+    && request.resource.data.studentCode is string
+    && request.resource.data.studentCode.matches('^([1-9]|[12][0-9]|3[0-7])$')
+    && request.resource.data.nickname is string
+    && request.resource.data.nickname.size() <= 20
+    && request.resource.data.kind in ['pre','post','mission']
+    && request.resource.data.score is int
+    && request.resource.data.score >= 0
+    && request.resource.data.score <= (request.resource.data.kind == 'mission' ? 1 : 10)
+    && request.resource.data.details is list
+    && request.resource.data.details.size() <= 10
+    && request.resource.data.createdAt == request.time;
+  }
+  match /attempts/{attemptId} {
+   allow read: if isTeacher();
+   allow create: if validStudentAttempt();
+   allow update, delete: if false;
+  }
+  match /{document=**} { allow read, write: if false; }
+ }
+}
